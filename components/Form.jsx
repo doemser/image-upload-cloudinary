@@ -7,10 +7,12 @@ export default function Form() {
   const CLOUDNAME = process.env.CLOUDINARY_CLOUDNAME;
   const PRESET = process.env.CLOUDINARY_PRESET_NAME;
 
-  //console.log(PRESET);
-
-  const [cloudinaryImage, setCloudinaryImage] = useState({});
-  console.log(cloudinaryImage.url);
+  const placeholderImage = {
+    url: 'https://images.unsplash.com/photo-1535591273668-578e31182c4f?ixlib=rb-1.2.1&raw_url=true&q=80&fm=jpg&crop=entropy&cs=tinysrgb&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170',
+    width: 1245,
+    height: 830,
+  };
+  const [previewImage, setPreviewImage] = useState(placeholderImage);
 
   const {
     register,
@@ -21,34 +23,38 @@ export default function Form() {
 
   const onSubmit = (data) => {
     if (watch('price') >= 0) {
+      data.image = previewImage.url; //kann man das so machen?
       console.log(data);
     }
   };
 
-  const uploadImage = async (event) => {
-    const url = `https://api.cloudinary.com/v1_1/${CLOUDNAME}/upload`;
-    const image = event.target.files[0];
+  const uploadImage = async () => {
+    try {
+      const url = `https://api.cloudinary.com/v1_1/${CLOUDNAME}/upload`;
+      const image = watch('image')[0];
 
-    //console.log(image);
+      const fileData = new FormData();
+      fileData.append('file', image);
+      fileData.append('upload_preset', PRESET);
+      fileData.append('folder', 'fish shop');
 
-    const fileData = new FormData();
-    fileData.append('file', image);
-    fileData.append('upload_preset', PRESET);
+      const response = await fetch(url, {
+        method: 'POST',
+        /* headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        body: JSON.stringify({ file: image, upload_preset: PRESET }), */
+        body: fileData,
+      });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      /* headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      body: JSON.stringify({ file: image, upload_preset: PRESET }), */
-      body: fileData,
-    });
-
-    setCloudinaryImage(await response.json());
+      setPreviewImage(await response.json());
+    } catch (error) {
+      console.error(error.message);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <StyledForm onSubmit={handleSubmit(onSubmit)}>
       {/* ----------NAME---------- */}
       <label htmlFor="name">Product Name</label>
       <input
@@ -75,27 +81,30 @@ export default function Form() {
       {watch('price') < 0 && <span>No negative prices, please!</span>}
 
       {/* ----------IMAGE---------- */}
-      <label htmlFor="image">Image</label>
-      <input
-        type="file"
-        id="image"
-        {...register('image')}
-        onChange={uploadImage}
-      />
-      {cloudinaryImage?.url && (
-        <Image
-          src={cloudinaryImage.url}
-          width={cloudinaryImage.width}
-          height={cloudinaryImage.height}
+      <div>
+        <label htmlFor="image">Image</label>
+        <input
+          type="file"
+          id="image"
+          {...register('image')}
+          onChange={uploadImage}
         />
-      )}
+
+        <ImageContainer>
+          <Image
+            src={previewImage.url}
+            width={previewImage.width}
+            height={previewImage.height}
+          />
+        </ImageContainer>
+      </div>
 
       <button type="submit">Submit</button>
-    </form>
+    </StyledForm>
   );
 }
 
-/* const StyledForm = styled.form`
+const StyledForm = styled.form`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -125,4 +134,8 @@ export default function Form() {
     color: red;
   }
 `;
- */
+
+const ImageContainer = styled.div`
+  max-width: 5rem;
+  height: auto;
+`;
